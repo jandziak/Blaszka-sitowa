@@ -18,9 +18,9 @@ body <- dashboardBody(
               )
             ),
             fluidRow(
-              infoBox("BLA"),
-              infoBox("BLA"),
-              infoBox("BLA")
+              infoBox(verbatimTextOutput("R_2")),
+              infoBox(verbatimTextOutput("coefficients")),
+              infoBox(verbatimTextOutput("correlation"))
             ),
             fluidRow(
               column(width = 6,
@@ -127,7 +127,7 @@ server <- function(input, output) {
   })
   
   
-  Fit_Model <- reactive({
+  Chosen_Model <- reactive({
     model <- Model_Select()
     fit <- Fit_Set()
     if (model == "Liniowy") {
@@ -139,9 +139,14 @@ server <- function(input, output) {
     if (model =="Eksponencjalny") {
       fit <- fit[[2]]
     }
-    RegressionPlots(fit)
+    fit
   })
   
+  Fit_Model <- reactive({
+    fit <- Chosen_Model()
+    plots<-RegressionPlots(fit)
+    plots
+  })
   output$plot_res_fitted <- renderPlotly({
     plots <- Fit_Model()
     plots$p1
@@ -188,6 +193,20 @@ server <- function(input, output) {
     names_list <- Names_List()
     selectInput("tabele","Podstawowe statystyki",choices = c("All",names_list), selected = names_list[1])
   })
+  
+  output$R_2 <- renderText({
+    model<-Chosen_Model()
+    summary(model)$r.squared
+  })
+  output$coefficients <- renderText({
+    model<-Chosen_Model()
+    summary(model)$coefficients[,1]
+  })
+  output$correlation <- renderText({
+    fit<-Fit_Set()
+    fit[[4]]$p.value
+  })
+  
 }
 
 shinyApp(ui, server)
