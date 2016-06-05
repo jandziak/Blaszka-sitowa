@@ -6,7 +6,7 @@ library(dplyr)
 library(shinydashboard)
 library(shiny)
 
-
+dane1 <- read.csv("Conf/dane analiza medyczna.csv", encoding = "UTF-8")
 theme_set(theme_light())
 theme_update(legend.position = c(0, 1), 
              legend.justification = c(0, 1))
@@ -52,6 +52,11 @@ fit_lm_model <- function(dane,
                          #sciezka_zapisu = NULL
                          ){
   # Ustalanie formul do przeliczen
+  id_1 <- is.na(dane[,zalezna])
+  id_2 <- is.na(dane[,niezalezna])
+  id <- which(id_1 + id_2 ==0)
+  dane <- dane[id, c(zalezna,niezalezna)]
+  #print(dane[,c(zalezna,niezalezna)])
   formula_liniowa <- as.formula(paste(zalezna, "~", niezalezna))
   formula_kwadratowa <- as.formula(paste(zalezna, "~", niezalezna,  " + I(", niezalezna, "^2)" ))
   formula_exp <- as.formula(paste(zalezna, "~", " I(exp(", niezalezna, "))" ))
@@ -60,27 +65,29 @@ fit_lm_model <- function(dane,
   # Zwraca błąd średniokwadratowy dla każdej z metod
   blad_liniowej <- evaluete_model(dane, formula_liniowa,zalezna)
   blad_kwadratowej <- evaluete_model(dane, formula_kwadratowa, zalezna)
-  blad_exp <- evaluete_model(dane, formula_exp,zalezna)
+  #blad_exp <- evaluete_model(dane, formula_exp,zalezna)
   
   # Dopasowywanie finalnych modeli
   model_liniowy <- lm(data = dane, formula = formula_liniowa)
   model_kwadratowy <- lm(data = dane, formula = formula_kwadratowa)
-  model_exp <- lm(data = dane, formula = formula_exp)
+  #model_exp <- lm(data = dane, formula = formula_exp)
   
   # Obliczanie reszt dla modeli
   reszty_kwadratowy <- predict(model_kwadratowy) - dane[, zalezna]
   resty_liniowy <- predict(model_liniowy) - dane[, zalezna]
-  reszty_exp <- predict(model_exp) - dane[, zalezna]
+  #reszty_exp <- predict(model_exp) - dane[, zalezna]
   
   # Test korelacji dla zmiennej 
   test_korelacji <- cor.test(dane[, zalezna], dane[, niezalezna])
 
   return(list(
     model_liniowy = model_liniowy,
-    model_exp = model_exp,
+    #model_exp = model_exp,
+    model_exp = 0,
     model_kwadratowy = model_kwadratowy,
     test_korelacji = test_korelacji,
-    blad_exp = blad_exp,
+    blad_exp = 0,
+    #blad_exp = blad_exp,
     blad_liniowej = blad_liniowej,
     blad_kwadratowej = blad_kwadratowej
   ))  
@@ -182,18 +189,22 @@ RegressionPlots <- function(fit){
 #plt
 
 plot_lm <- function(dane, zalezna, niezalezna){
+  id_1 <- is.na(dane[,zalezna])
+  id_2 <- is.na(dane[,niezalezna])
+  id <- which(id_1 + id_2 ==0)
+  dane <- dane[id, ]
   title <- paste("Regression of ", zalezna, " vs ", niezalezna, sep = "")
   p <- ggplot(dane, aes_string(y=zalezna, x=niezalezna)) + 
     ggtitle(title) + scale_fill_man + 
     scale_color_man + labs(fill="", color = "") 
   p1 <- p + stat_smooth(method="lm", formula=y ~ x+I(x^2)) + geom_point()
   p2 <- p + stat_smooth(method="lm") + geom_point()
-  p3 <- p + stat_smooth(method="lm", formula=y ~ I(exp(x))) + geom_point() 
+  #p3 <- p + stat_smooth(method="lm", formula=y ~ I(exp(x))) + geom_point() 
   p1
   p1 <- ggplotly(p1)
   p2 <- ggplotly(p2)
-  p3 <- ggplotly(p3)
-  plt = list(p1=p1, p2=p2, p3=p3)
+ # p3 <- ggplotly(p3)
+  plt = list(p1=p1, p2=p2)#, p3=p3)
   return(plt)
 }
 

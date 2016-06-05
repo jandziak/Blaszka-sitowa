@@ -6,15 +6,15 @@ library(dplyr)
 library(shinydashboard)
 library(shiny)
 
-
+source("./Conf/janek.R")
 
 body <- dashboardBody(
   tabItems(
     tabItem(tabName = "dashboard",
             fluidRow(
               box(
-                title = "Histogram", background = "maroon", solidHeader = TRUE, width =NULL,
-                plotlyOutput("plot_model", height = 400)
+                title = "Fitted model", width = NULL, solidHeader = TRUE, status = "primary",
+                plotlyOutput("plot_model", height = 600)
               )
             ),
             fluidRow(
@@ -67,56 +67,86 @@ body <- dashboardBody(
 
 sidebar <- dashboardSidebar(
   sidebarMenu(
-  menuItem("Modele", tabName = "dashboard", icon = icon("dashboard")),
-  menuItem("Podstawowe statystyki", icon = icon("th"), tabName = "widgets"),
-  selectInput("model_type", label="Rodzaj modelu", choices = c("Liniowy","Kwadratowy","Eksponencjalny"), selected = "Liniowy"),
+  menuItem("Models", tabName = "dashboard", icon = icon("dashboard")),
+  menuItem("Basic statistics", icon = icon("th"), tabName = "widgets"),
+  selectInput("model_type", label="Type of Model", choices = c("Linear","Quadratic","Exponential"), selected = "Linear"),
   uiOutput("dep_selector"),
+  uiOutput("dep_range_slider"),
   uiOutput("indep_selector"),
-  selectInput("data", label="Dane", choices = c("Blaszka","Metody"), selected = c("Blaszka"))
+  uiOutput("indep_range_slider"),
+  selectInput("data", label="Data Set", choices = c("Ethmoid Bone","Measurement methods"), selected = c("Ethmoid Bone"))
 )
 )
 
 
 # We'll save it in a variable `ui` so that we can preview it in the console
 ui <- dashboardPage(
-  dashboardHeader(title = "Badanie Blaszki Sitowej"),
+  dashboardHeader(title = "Medical research"),
   sidebar,
   body
 )
 
 server <- function(input, output) {
-  print(dir())
-  source("./Conf/janek.R")
+  #print(dir())
+  #source("./Conf/janek.R")
   Model_Select <- reactive({input$model_type})
   Dependent_Select <- reactive({input$dependent})
   Independent_Select <- reactive({input$independent})
   Stats_Select <- reactive({input$tabele})
+  Dep_Range <- reactive({input$dep_range})
+  Indep_Range <- reactive({input$indep_range})
+  
   Data_Select <- reactive({
-    if(input$data == "Blaszka"){
-      dane1 <- read.csv("Conf/dane analiza medyczna.csv")
-    } else if (input$data == "Metody"){
-      dane1 <- read.csv("Conf/dane2.csv")
-    }
+    dane1<-Data_Select_NA()
+    dep_rng <- Dep_Range()
+    dep <- Dependent_Select()
+    indep_rng <- Indep_Range()
+    indep <- Independent_Select()
+    dane1 <- dane1[c(dep_rng[2]> dane1[,dep])&c(dane1[,dep] > dep_rng[1])&c(indep_rng[2]> dane1[,indep])& c(dane1[,indep] > indep_rng[1]), ]
     dane1
     })
+  Data_Select_Full <- reactive({
+    if(input$data == "Ethmoid Bone"){
+      dane1 <- read.csv("Conf/dane analiza medyczna.csv", encoding = "UTF-8")
+      nazwy <- read.csv("Conf/ethmoid_bone.csv", encoding = "UTF-8")
+    } else if (input$data == "Measurement methods"){
+      dane1 <- read.csv("Conf/dane2.csv", encoding = "UTF-8")
+      nazwy <- read.csv("Conf/measurement.csv", encoding = "UTF-8")
+    }
+    names(dane1)<-nazwy$english
+    dane1[,nazwy$in_analysis == 1]
+  })
+  Data_Select_NA <- reactive({
+    dane1 <- Data_Select_Full()
+    indep <- Independent_Select()
+    dep   <- Dependent_Select()
+    dane1 <- dane1[!is.na(dane1[,dep]),]
+    dane1 <- dane1[!is.na(dane1[,indep]),]
+    dane1
+  })
   Names_List<-reactive({
-    dane1 <- Data_Select()
+    dane1 <- Data_Select_Full()
     names_list <- names(dane1)[as.vector(sapply(names(dane1), function(x) is.numeric(dane1[, x])))]
     names_list
   })
-  
+  # Names_Generate <- reactive({
+  #   new_names <- Names_List()
+  #   new_names <- new_names[-which(new_names == Independent_Select())]
+  #   new_names <- new_names[-which(new_names == Dependent_Select())]
+  #   new_names
+  # })
   output$plot_model <- renderPlotly({
     model <- Model_Select()
     dep <- Dependent_Select()
     indep <- Independent_Select()
     plt <- plot_lm(Data_Select(), dep, indep)
-    if (model == "Liniowy") {
+    if (model == "Linear") {
       plt <- plt$p2
     }
-    if (model == "Kwadratowy") {
+    if (model == "Quadratic") {
       plt <- plt$p1
     }
-    if (model =="Eksponencjalny") {
+    if (model =="Exponential") {
       plt <- plt$p3
     }
     plt
@@ -130,13 +160,13 @@ server <- function(input, output) {
   Chosen_Model <- reactive({
     model <- Model_Select()
     fit <- Fit_Set()
-    if (model == "Liniowy") {
-      fit <- fit[[1]]
+    if (model == "Linear") {
+      fit <- fit$model_liniowy
     }
-    if (model == "Kwadratowy") {
-      fit <- fit[[3]]
+    if (model == "Quadratic") {
+      fit <- fit$model_kwadratowy
     }
-    if (model =="Eksponencjalny") {
+    if (model =="Exponential") {
       fit <- fit[[2]]
     }
     fit
@@ -178,22 +208,32 @@ server <- function(input, output) {
   })
   
   output$dep_selector <- renderUI({
-    dane1 <- Data_Select()
     names_list <- Names_List()
-    selectInput("dependent", label="Zmienna zalezna", choices = names_list, selected = names_list[2])
+    selectInput("dependent", label="Dependent variable", choices = names_list, selected = names_list[1])
   })
   
   output$indep_selector <- renderUI({
-    dane1 <- Data_Select()
     names_list <- Names_List()
-    selectInput("independent", label="Zmienna niezalezna", choices = names_list, selected = names_list[1])
+    selectInput("independent", label="Independent variable", choices = names_list, selected = names_list[4])
   })
   output$stats_selector <- renderUI({
-    dane1 <- Data_Select()
     names_list <- Names_List()
-    selectInput("tabele","Podstawowe statystyki",choices = c("All",names_list), selected = names_list[1])
+    selectInput("tabele","Basic statistics",choices = c("All",names_list), selected = names_list[1])
   })
-  
+  output$dep_range_slider <- renderUI({
+    dane1 <- Data_Select_NA()
+    depend <- Dependent_Select()
+    mi <- floor(min(dane1[,depend]))
+    ma <- ceiling(max(dane1[,depend]))
+    sliderInput("dep_range",label="Dependent variable range", min=mi, max=ma, value = c(mi,ma) )
+  })  
+  output$indep_range_slider <- renderUI({
+    dane1 <- Data_Select_NA()
+    independ <- Independent_Select()
+    mi <- floor(min(dane1[,independ]))
+    ma <- ceiling(max(dane1[,independ]))
+    sliderInput("indep_range",label="Independent variable range", min=mi, max=ma, value = c(mi,ma) )
+  })
   output$R_2 <- renderText({
     model<-Chosen_Model()
     summary(model)$r.squared

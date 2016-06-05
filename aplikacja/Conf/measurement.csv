@@ -1,0 +1,13 @@
+,polish,english,in_analysis
+1,Plec,gender,T
+2,Wiek,age,T
+3,Choroba,illness,T
+4,CCT,CCT,T
+5,GAT.akt,GAT_akt,T
+6,GAT,GAT,T
+7,ART,ART,T
+8,Ktory.ART,which_ART,T
+9,ART_GAT,Grad_ART_GAT,T
+10,Bezwzgledna,absolute_value,T
+11,Pacjent,patient,T
+12,oko,eye,T
