@@ -2,9 +2,9 @@ name: Badanie_Blaszka
 account: mikekras
 server: shinyapps.io
 appId: 104743
-bundleId: 466234
+bundleId: 472336
 url: https://mikekras.shinyapps.io/Badanie_Blaszka/
-when: 1464618340.52427
+when: 1465149096.2295
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: Conf/dane analiza medyczna - Copy.csv|Conf/dane2 - Copy.csv

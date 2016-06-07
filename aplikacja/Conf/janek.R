@@ -5,6 +5,7 @@ library(ggplot2)
 library(dplyr)
 library(shinydashboard)
 library(shiny)
+library(FSelector)
 
 dane1 <- read.csv("Conf/dane analiza medyczna.csv", encoding = "UTF-8")
 theme_set(theme_light())
@@ -258,14 +259,14 @@ box_2_plot <- function(df, var_1, var_2, group = "all"){
   p <- ggplot(temp_df, aes(names, values))
   p <- p + geom_boxplot(aes(fill = names)) + geom_jitter()
   p <- p + theme(legend.justification=c(1,0), legend.position=c(1,0))
-  p <- p + xlab("czynniki") +ylab("wartosci") 
-  p <- p + scale_fill_discrete(name="Czynniki")
+  p <- p + xlab("Variables") +ylab("Values") 
+  p <- p + scale_fill_discrete(name="Variables")
   return(p)
 }
 
-box_plot<- function(data, variable, group = "all"){
+box_plot<- function(data, variable, group = "None"){
   values <- data[, variable]
-  if(group != "all")
+  if(group != "None")
   {
     names <-data[,group]
   } else{
@@ -275,7 +276,28 @@ box_plot<- function(data, variable, group = "all"){
   p <- ggplot(temp_df, aes(names, values))
   p <- p + geom_boxplot(aes(fill = names)) + geom_jitter()
   p <- p + theme(legend.justification=c(1,0), legend.position=c(1,0))
-  p <- p + xlab("czynniki") +ylab("wartosci") 
-  p <- p + scale_fill_discrete(name="Czynniki")
+  p <- p + xlab("Categories") +ylab("Values") 
+  p <- p + scale_fill_discrete(name="Categories")
   return(p)
+}
+
+wilcox_test <- function(var_1, var_2, data){
+  test <- wilcox.test(data[, var_1], data[, var_2])
+  stat <- data.frame(test$statistic)
+  p_val <- data.frame(round(test$p.value, 3))
+  n <- length(data[, var_1])
+  wynik <- data.frame(Var_1 = var_1, Var_2 = var_2, n = n, 
+                      'p-value' = as.numeric(p_val), 'Null hypothesis' = "Difference between the pairs follows \n a symmetric distribution around zero")
+  return(wynik)
+}
+
+u_mann_whitney_test <- function(var_1, factor_1, data){
+  formula <- as.formula(paste(var_1, "~", factor_1, sep = " "))
+  test <- wilcox.test(data = data, formula)
+  stat <- data.frame(test$statistic)
+  p_val <- data.frame(round(test$p.value, 3))
+  n <- length(data[, var_1])
+  wynik <- data.frame(Variable = var_1, Grups = factor_1,  n = n,
+                      'p-value' = as.numeric(p_val), 'Null hypothesis' = "Groups have identical distributions")
+  return(wynik)
 }

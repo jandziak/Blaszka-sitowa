@@ -48,8 +48,17 @@ body <- dashboardBody(
     ),
     tabItem(tabName = "widgets",
             fluidRow(
-              box(width = NULL, solidHeader = TRUE, status = "primary",
-                  uiOutput("stats_selector"))
+              column(width=6,
+                     box(
+                       width = NULL, solidHeader = TRUE, status = "primary",
+                       uiOutput("stats_selector")
+                       )
+                  ),
+              column(width = 6,
+                     box(width = NULL, solidHeader = TRUE, status = "primary",
+                         uiOutput("group_selector")
+                         )
+                     )
             ),
             fluidRow(
               box(width =NULL, solidHeader = TRUE, status = "primary",
@@ -59,7 +68,42 @@ body <- dashboardBody(
               box(plotlyOutput("boxplot_basic")),
               box(plotOutput("histogram_basic"))
             )
-            
+
+    ),
+    tabItem(tabName = "formal",
+            fluidRow(
+              column(width=4,
+                     box(
+                       width = NULL, solidHeader = TRUE, status = "primary",
+                       uiOutput("test_var_selector")
+                       )
+                     ),
+              column(width=4,
+                     box(
+                       width = NULL, solidHeader = TRUE, status = "primary",
+                       uiOutput("category_selector")
+                       )
+                    ),
+              column(width=4,
+                     box(
+                       width = NULL, solidHeader = TRUE, status = "primary",
+                       radioButtons("testing", label="Type of comparison", choices = c("Groups of one variable", "Two variables"))
+                       )
+                     )
+            ),
+            fluidRow(
+              column(width=6,
+                     box(
+                       width = NULL, solidHeader = TRUE, status = "primary",
+                       plotlyOutput("boxplot_2var", height = 600)
+                     )
+              ),
+              column(width = 6,
+                     box(width = NULL, solidHeader = TRUE, status = "primary",
+                         DT::dataTableOutput("table_test")
+                     )
+              )
+            )
     )
   )
 )
@@ -69,6 +113,7 @@ sidebar <- dashboardSidebar(
   sidebarMenu(
   menuItem("Models", tabName = "dashboard", icon = icon("dashboard")),
   menuItem("Basic statistics", icon = icon("th"), tabName = "widgets"),
+  menuItem("Formal tests", icon = icon("cubes"), tabName = "formal"),
   selectInput("model_type", label="Type of Model", choices = c("Linear","Quadratic","Exponential"), selected = "Linear"),
   uiOutput("dep_selector"),
   uiOutput("dep_range_slider"),
@@ -95,6 +140,8 @@ server <- function(input, output) {
   Stats_Select <- reactive({input$tabele})
   Dep_Range <- reactive({input$dep_range})
   Indep_Range <- reactive({input$indep_range})
+  Group_Select <- reactive({input$grouping})
+  Testing_Select <- reactive({input$testing})
   
   Data_Select <- reactive({
     dane1<-Data_Select_NA()
@@ -195,15 +242,28 @@ server <- function(input, output) {
   })
   
   output$table1 <- DT::renderDataTable({
-    datatable(BasicStats(Data_Select(),Stats_Select()))
+    datatable(BasicStats(Data_Select_Full(),Stats_Select()))
   })
-  
+  output$table_test <- DT::renderDataTable({
+    dane1 <- Data_Select_Full()
+    if(Testing_Select() == "Groups of one variable") {
+      datatable(u_mann_whitney_test(input$test_var,input$category, dane1))
+    } else {
+      datatable(wilcox_test(input$test_var,input$category2,dane1))
+    }
+  })
   output$boxplot_basic <- renderPlotly({
-    box_plot(Data_Select(),Stats_Select())
+    box_plot(Data_Select_Full(),Stats_Select(),Group_Select())
   })
-  
+  output$boxplot_2var <- renderPlotly({
+    if(Testing_Select() == "Groups of one variable") {
+      box_plot(Data_Select_Full(),input$test_var,input$category)
+    } else {
+      box_2_plot(Data_Select_Full(),input$test_var,input$category2)
+    }
+  })
   output$histogram_basic <- renderPlot({
-    dane1<-Data_Select()
+    dane1<-Data_Select_Full()
     hist(dane1[,Stats_Select()])
   })
   
@@ -219,6 +279,23 @@ server <- function(input, output) {
   output$stats_selector <- renderUI({
     names_list <- Names_List()
     selectInput("tabele","Basic statistics",choices = c("All",names_list), selected = names_list[1])
+  })
+  output$group_selector <- renderUI({
+    dane1 <- Data_Select_Full()
+    selectInput("grouping","Group by",choices = c("None",names(dane1)[sapply(dane1,is.factor)]), selected = "None")
+  })
+  output$test_var_selector <- renderUI({
+    names_list <- Names_List()
+    selectInput("test_var","Tested variable",choices = c(names_list), selected = names_list[1])
+  })
+  output$category_selector <- renderUI({
+    dane1 <- Data_Select_Full()
+    if(Testing_Select() == "Groups of one variable") {
+      selectInput("category","Categoric variable",choices = c(names(dane1)[sapply(dane1,is.factor)]))
+    } else {
+      selectInput("category2","Second tested variable",choices = c(Names_List()))
+    }
+    
   })
   output$dep_range_slider <- renderUI({
     dane1 <- Data_Select_NA()
