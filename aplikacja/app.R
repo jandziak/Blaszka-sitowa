@@ -8,7 +8,9 @@ library(shiny)
 
 source("./Conf/janek.R")
 
-body <- dashboardBody(
+body <- dashboardBody(tags$style(type="text/css",
+                                 ".shiny-output-error { visibility: hidden; }",
+                                 ".shiny-output-error:before { visibility: hidden; }"),
   tabItems(
     tabItem(tabName = "dashboard",
             fluidRow(
@@ -66,7 +68,11 @@ body <- dashboardBody(
             ),
             fluidRow(
               box(plotlyOutput("boxplot_basic")),
-              box(plotOutput("histogram_basic"))
+              box(plotlyOutput("histogram_1"))
+            ),
+            fluidRow(
+              box(plotlyOutput("histogram_2")),
+              box(plotlyOutput("histogram_3"))
             )
 
     ),
@@ -149,7 +155,7 @@ server <- function(input, output) {
     dep <- Dependent_Select()
     indep_rng <- Indep_Range()
     indep <- Independent_Select()
-    dane1 <- dane1[c(dep_rng[2]> dane1[,dep])&c(dane1[,dep] > dep_rng[1])&c(indep_rng[2]> dane1[,indep])& c(dane1[,indep] > indep_rng[1]), ]
+    dane1 <- dane1[c(dep_rng[2]>= dane1[,dep])&c(dane1[,dep] >= dep_rng[1])&c(indep_rng[2]>= dane1[,indep])& c(dane1[,indep] >= indep_rng[1]), ]
     dane1
     })
   Data_Select_Full <- reactive({
@@ -242,10 +248,10 @@ server <- function(input, output) {
   })
   
   output$table1 <- DT::renderDataTable({
-    datatable(BasicStats(Data_Select_Full(),Stats_Select()))
+    datatable(BasicStats(Data_Select(),Stats_Select(),Group_Select()))
   })
   output$table_test <- DT::renderDataTable({
-    dane1 <- Data_Select_Full()
+    dane1 <- Data_Select()
     if(Testing_Select() == "Groups of one variable") {
       datatable(u_mann_whitney_test(input$test_var,input$category, dane1))
     } else {
@@ -253,20 +259,36 @@ server <- function(input, output) {
     }
   })
   output$boxplot_basic <- renderPlotly({
-    box_plot(Data_Select_Full(),Stats_Select(),Group_Select())
+    box_plot(Data_Select(),Stats_Select(),Group_Select())
   })
   output$boxplot_2var <- renderPlotly({
     if(Testing_Select() == "Groups of one variable") {
-      box_plot(Data_Select_Full(),input$test_var,input$category)
+      box_plot(Data_Select(),input$test_var,input$category)
     } else {
-      box_2_plot(Data_Select_Full(),input$test_var,input$category2)
+      box_2_plot(Data_Select(),input$test_var,input$category2)
     }
   })
-  output$histogram_basic <- renderPlot({
-    dane1<-Data_Select_Full()
-    hist(dane1[,Stats_Select()])
+  Histograms <-reactive({
+    dane1 <- Data_Select()
+    var <- Stats_Select()
+    factor <- Group_Select()
+    result<-hist_blaszka(dane1, var, factor)
+    result
   })
-  
+  output$histogram_1 <- renderPlotly({
+    plot <- Histograms()
+    plot$p1
+  })
+  output$histogram_2 <- renderPlotly({
+    plot <- Histograms()
+    plot$p2
+  })  
+  output$histogram_3 <- renderPlotly({
+    plot <- Histograms()
+    if(plot$p3!=1) {
+      plot$p3
+    }
+  })
   output$dep_selector <- renderUI({
     names_list <- Names_List()
     selectInput("dependent", label="Dependent variable", choices = names_list, selected = names_list[1])

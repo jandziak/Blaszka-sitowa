@@ -6,6 +6,7 @@ library(dplyr)
 library(shinydashboard)
 library(shiny)
 library(FSelector)
+library(tidyr)
 
 dane1 <- read.csv("Conf/dane analiza medyczna.csv", encoding = "UTF-8")
 theme_set(theme_light())
@@ -217,11 +218,11 @@ mea <- function(x) return(mean(x, na.rm = TRUE))
 std <- function(x) return(sd(x, na.rm = TRUE))
 counter <- function(x) return(sum(x!="", na.rm = TRUE))
 
-BasicStats <- function(data, variables, grouping = NULL) {
+BasicStats <- function(data, variables, grouping = "None") {
   if(variables == "All"){
     variables <- names(data)[as.vector(sapply(names(data), function(x) is.numeric(data[, x])))]
   }
-  if(is.null(grouping)) {
+  if(grouping=="None") {
     used_data <- data[variables]
     base_stats <- data.frame(variables)
     base_stats <- cbind(base_stats,"Full Set", apply(used_data,2,mi),apply(used_data,2,q25),
@@ -277,7 +278,11 @@ box_plot<- function(data, variable, group = "None"){
   p <- p + geom_boxplot(aes(fill = names)) + geom_jitter()
   p <- p + theme(legend.justification=c(1,0), legend.position=c(1,0))
   p <- p + xlab("Categories") +ylab("Values") 
-  p <- p + scale_fill_discrete(name="Categories")
+  if(group != "None") {
+    p <- p + scale_fill_discrete(name="Categories")
+  } else {
+    p <- p + scale_fill_discrete(guide=FALSE)
+  }
   return(p)
 }
 
@@ -300,4 +305,61 @@ u_mann_whitney_test <- function(var_1, factor_1, data){
   wynik <- data.frame(Variable = var_1, Grups = factor_1,  n = n,
                       'p-value' = as.numeric(p_val), 'Null hypothesis' = "Groups have identical distributions")
   return(wynik)
+}
+
+hist_blaszka <- function(data, var, factor = "None") {
+  p2 <- 1
+  p3 <- 1
+  data_tmp <- data
+  if (factor != "None"){
+    factors <- unique(data[,factor])
+    data_tmp <- data[data[,factor] == factors[1],]
+  } else {
+    factors = "All"
+  }
+  k <- data_tmp[,var] %>%
+    length %>%
+    sqrt %>%
+    floor + 1
+  p1 <- ggplot(data=data_tmp, aes_string(var)) + 
+    geom_histogram(aes(y =..density..), 
+                   bins = k,
+                   col="blue", 
+                   fill="blue", 
+                   alpha = .2) + 
+    labs(title=paste("Histogram of", var, "for", factors[1])) +
+    labs(x=var, y="Density") 
+  
+  if (length(factors) > 1) {
+    data_tmp <- data[data[,factor] == factors[2],]
+    k <- data_tmp[,var] %>%
+      length %>%
+      sqrt %>%
+      floor + 1
+    p2 <- ggplot(data=data_tmp, aes_string(var)) +
+      geom_histogram(aes(y =..density..),
+                     bins = k,
+                     col="blue",
+                     fill="blue",
+                     alpha = .2) +
+      labs(title=paste("Histogram of", var, "for", factors[2])) +
+      labs(x=var, y="Density")
+  }
+  if (length(factors) > 2) {
+    data_tmp <- data[data[,factor] == factors[3],]
+    k <- data_tmp[,var] %>%
+      length %>%
+      sqrt %>%
+      floor + 1
+    p3 <- ggplot(data=data_tmp, aes_string(var)) +
+      geom_histogram(aes(y =..density..),
+                     bins = k,
+                     col="blue",
+                     fill="blue",
+                     alpha = .2) +
+      labs(title=paste("Histogram of", var, "for", factors[3])) +
+      labs(x=var, y="Density")
+  }
+  
+  return(list(p1 = p1,p2 = p2, p3 = p3))
 }
