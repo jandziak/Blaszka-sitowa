@@ -14,3 +14,10 @@
 13,ART_GAT_sr,ART_GAT_mean,T
 14,ART_GAT_akt_sr,ART_GAT_akt_mean,T
 15,ART_GAT,ART_GAT,T
+16,ART_GAT_akt_abs,ART_GAT_akt_abs,T
+17,ART_GAT_abs,ART_GAT_abs,T
+18,ART akt,ART akt,T
+19,ART_akt_GAT,ART_akt_GAT,T
+20,ART_akt_GAT_akt,ART_akt_GAT_akt,T
+21,ART_akt_GAT_abs,ART_akt_GAT_abs,T
+22,ART_akt_GAT_akt_abs,ART_akt_GAT_akt_abs,T
